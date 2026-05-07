@@ -92,10 +92,9 @@ export default function SearchPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          project_id: "00000000-0000-0000-0000-000000000001", // Demo project ID
           source_ids: selectedSources,
           query: query,
-          keywords: keywords.length > 0 ? keywords : [query],
+          ...(keywords.length > 0 && { keywords: keywords }),
         }),
       });
 

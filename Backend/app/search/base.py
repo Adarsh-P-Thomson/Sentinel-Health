@@ -3,7 +3,7 @@ Base search engine interface
 """
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -77,10 +77,9 @@ class BaseSearchEngine(ABC):
         if existing:
             return str(existing["_id"])
         
-        # Prepare document
+        # Prepare document - only include fields that have values
         document = {
             "search_execution_id": self.search_execution_id,
-            "project_id": self.project_id,
             "source_id": self.source_id,
             "url": page_data["url"],
             "url_hash": url_hash,
@@ -89,8 +88,6 @@ class BaseSearchEngine(ABC):
             "text_content": page_data.get("text_content", ""),
             "title": page_data.get("title", ""),
             "description": page_data.get("description", ""),
-            "author": page_data.get("author"),
-            "published_date": page_data.get("published_date"),
             "links": page_data.get("links", []),
             "media": page_data.get("media", []),
             "http_status": page_data.get("http_status", 200),
@@ -99,9 +96,17 @@ class BaseSearchEngine(ABC):
             "posts_extracted_count": 0,
             "fetched_at": datetime.utcnow(),
             "retention_policy": "low_value",
-            "expires_at": datetime.utcnow().replace(day=datetime.utcnow().day + 30),  # 30 days
+            "expires_at": datetime.utcnow() + timedelta(days=30),
             "created_at": datetime.utcnow()
         }
+        
+        # Add optional fields only if they have values
+        if self.project_id:
+            document["project_id"] = self.project_id
+        if page_data.get("author"):
+            document["author"] = page_data["author"]
+        if page_data.get("published_date"):
+            document["published_date"] = page_data["published_date"]
         
         result = await self.mongodb.raw_pages.insert_one(document)
         return str(result.inserted_id)
@@ -127,11 +132,9 @@ class BaseSearchEngine(ABC):
             if existing:
                 return str(existing["_id"])
         
-        # Prepare document
+        # Prepare document - only include fields that have values
         document = {
             "search_execution_id": self.search_execution_id,
-            "raw_page_id": ObjectId(raw_page_id) if raw_page_id else None,
-            "project_id": self.project_id,
             "source_id": self.source_id,
             "source_type": self.source_config.get("type", "unknown"),
             "source_post_id": post_data.get("source_post_id"),
@@ -151,9 +154,15 @@ class BaseSearchEngine(ABC):
             "mentions": post_data.get("mentions", []),
             "media": post_data.get("media", []),
             "retention_policy": "low_value",
-            "expires_at": datetime.utcnow().replace(day=datetime.utcnow().day + 30),  # 30 days
+            "expires_at": datetime.utcnow() + timedelta(days=30),
             "created_at": datetime.utcnow()
         }
+        
+        # Add optional fields
+        if raw_page_id:
+            document["raw_page_id"] = ObjectId(raw_page_id)
+        if self.project_id:
+            document["project_id"] = self.project_id
         
         result = await self.mongodb.raw_posts.insert_one(document)
         return str(result.inserted_id)

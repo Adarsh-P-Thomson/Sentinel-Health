@@ -16,10 +16,10 @@ router = APIRouter(tags=["Search"])
 # Request/Response Models
 class SearchRequest(BaseModel):
     """Search request model"""
-    project_id: str
+    project_id: Optional[str] = None  # Optional - for public searches
     source_ids: List[str]
     query: str
-    keywords: List[str]
+    keywords: Optional[List[str]] = None  # Optional - will use query if not provided
     search_params: Optional[Dict[str, Dict[str, Any]]] = None
 
 
@@ -59,7 +59,7 @@ async def execute_search(
     """
     Execute search across one or more sources
     
-    - **project_id**: UUID of the project
+    - **project_id**: UUID of the project (optional - leave null for public searches)
     - **source_ids**: List of source IDs (reddit, twitter, google)
     - **query**: Search query string
     - **keywords**: List of keywords to search for
@@ -68,7 +68,6 @@ async def execute_search(
     Example:
     ```json
     {
-      "project_id": "uuid-here",
       "source_ids": ["reddit", "twitter"],
       "query": "Drug-Y side effects",
       "keywords": ["Drug-Y", "headache", "nausea"],
@@ -88,13 +87,16 @@ async def execute_search(
     """
     orchestrator = SearchOrchestrator(mongodb, db)
     
+    # Use query as keyword if no keywords provided
+    keywords = request.keywords if request.keywords else [request.query]
+    
     if len(request.source_ids) == 1:
         # Single source search
         result = await orchestrator.execute_search(
             project_id=request.project_id,
             source_id=request.source_ids[0],
             query=request.query,
-            keywords=request.keywords,
+            keywords=keywords,
             search_params=request.search_params.get(request.source_ids[0]) if request.search_params else None
         )
         
@@ -110,7 +112,7 @@ async def execute_search(
             project_id=request.project_id,
             source_ids=request.source_ids,
             query=request.query,
-            keywords=request.keywords,
+            keywords=keywords,
             search_params=request.search_params
         )
         
@@ -127,7 +129,7 @@ async def get_search_execution(
     
     Returns detailed information about a specific search execution
     """
-    from app.models.search_execution import SearchExecution
+    from app.models import SearchExecution
     from sqlalchemy import select
     
     stmt = select(SearchExecution).where(SearchExecution.id == search_execution_id)

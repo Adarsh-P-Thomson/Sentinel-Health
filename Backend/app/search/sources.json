@@ -81,6 +81,33 @@
       }
     },
     {
+      "id": "serper",
+      "name": "Serper (Google API)",
+      "type": "search_engine",
+      "enabled": true,
+      "description": "Google search via Serper.dev API (2,500 free searches/month)",
+      "base_url": "https://serper.dev",
+      "api_url": "https://google.serper.dev/search",
+      "rate_limit": {
+        "requests_per_minute": 60
+      },
+      "auth_required": true,
+      "auth_type": "api_key",
+      "config": {
+        "api_key": "${SERPER_API_KEY}"
+      },
+      "search_endpoints": [
+        {
+          "name": "search",
+          "endpoint": "/search",
+          "method": "POST"
+        }
+      ],
+      "data_extraction": {
+        "api_based": true
+      }
+    },
+    {
       "id": "google",
       "name": "Google Search",
       "type": "search_engine",
@@ -92,26 +119,79 @@
         "requests_per_minute": 10,
         "requests_per_day": 100
       },
-      "auth_required": true,
-      "auth_type": "api_key",
-      "config": {
-        "api_key": "${GOOGLE_API_KEY}",
-        "cx": "${GOOGLE_SEARCH_ENGINE_ID}"
-      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
       "search_endpoints": [
         {
-          "name": "custom_search",
-          "endpoint": "",
+          "name": "web_scrape",
+          "endpoint": "/search",
           "method": "GET",
           "params": {
             "q": "query",
-            "num": 10,
-            "start": 1
+            "num": 10
           }
         }
       ],
       "data_extraction": {
-        "result_fields": ["title", "link", "snippet", "displayLink"]
+        "scraping_required": true
+      }
+    },
+    {
+      "id": "duckduckgo",
+      "name": "DuckDuckGo",
+      "type": "search_engine",
+      "enabled": true,
+      "description": "Privacy-focused search engine",
+      "base_url": "https://duckduckgo.com",
+      "api_url": "https://html.duckduckgo.com/html",
+      "rate_limit": {
+        "requests_per_minute": 10
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "html_search",
+          "endpoint": "",
+          "method": "GET",
+          "params": {
+            "q": "query"
+          }
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true
+      }
+    },
+    {
+      "id": "bing",
+      "name": "Bing Search",
+      "type": "search_engine",
+      "enabled": true,
+      "description": "Microsoft Bing search engine",
+      "base_url": "https://www.bing.com",
+      "api_url": "https://www.bing.com/search",
+      "rate_limit": {
+        "requests_per_minute": 10
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "web_search",
+          "endpoint": "",
+          "method": "GET",
+          "params": {
+            "q": "query",
+            "count": 20
+          }
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true
       }
     },
     {
@@ -274,8 +354,8 @@
   },
   "metadata": {
     "version": "1.0.0",
-    "last_updated": "2026-05-06",
-    "total_sources": 8,
-    "enabled_sources": 3
+    "last_updated": "2026-05-07",
+    "total_sources": 10,
+    "enabled_sources": 5
   }
 }

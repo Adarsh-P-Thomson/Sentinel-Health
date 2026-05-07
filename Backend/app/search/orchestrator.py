@@ -12,6 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 from app.search.engines import RedditSearchEngine, TwitterSearchEngine, GoogleSearchEngine
+from app.search.engines.simple_web import SimpleWebSearchEngine
+from app.search.engines.duckduckgo import DuckDuckGoSearchEngine
+from app.search.engines.bing import BingSearchEngine
+from app.search.engines.serper import SerperSearchEngine
 
 
 class SearchOrchestrator:
@@ -26,7 +30,11 @@ class SearchOrchestrator:
         self.engine_map = {
             "reddit": RedditSearchEngine,
             "twitter": TwitterSearchEngine,
-            "google": GoogleSearchEngine
+            "google": SimpleWebSearchEngine,  # Use simple scraper instead of API
+            "duckduckgo": DuckDuckGoSearchEngine,
+            "bing": BingSearchEngine,
+            "serper": SerperSearchEngine,  # Serper.dev API - actually works!
+            "simple_web": SimpleWebSearchEngine
         }
     
     def _load_sources_config(self) -> Dict[str, Any]:
@@ -104,7 +112,7 @@ class SearchOrchestrator:
             }
         
         # Create search execution record in PostgreSQL
-        from app.models.search_execution import SearchExecution
+        from app.models import SearchExecution, Project
         
         search_execution = SearchExecution(
             project_id=project_id,
