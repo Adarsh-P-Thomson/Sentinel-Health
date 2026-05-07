@@ -17,10 +17,19 @@ class SerperSearchEngine(BaseSearchEngine):
         self,
         query: str,
         keywords: List[str],
-        num_results: int = 10
+        num_results: int = 10,
+        search_reddit: bool = False,
+        search_twitter: bool = False
     ) -> Dict[str, Any]:
         """
         Search using Serper.dev API
+        
+        Args:
+            query: Search query string
+            keywords: List of keywords to search for
+            num_results: Number of results to fetch
+            search_reddit: If True, search only Reddit (site:reddit.com)
+            search_twitter: If True, search only Twitter/X (site:x.com OR site:twitter.com)
         
         Get free API key from: https://serper.dev
         """
@@ -42,15 +51,32 @@ class SerperSearchEngine(BaseSearchEngine):
                 results["errors"].append("Serper API key not configured. Get free key at https://serper.dev and add to .env as SERPER_API_KEY")
                 return results
             
+            # Check config for site-specific search
+            config = self.source_config.get("config", {})
+            if config.get("search_reddit"):
+                search_reddit = True
+            if config.get("search_twitter"):
+                search_twitter = True
+            
+            # Modify query for site-specific search
+            if search_reddit:
+                search_query = f"site:reddit.com {query}"
+            elif search_twitter:
+                search_query = f"(site:x.com OR site:twitter.com) {query}"
+            else:
+                search_query = query
+            
             url = "https://google.serper.dev/search"
             headers = {
                 "X-API-KEY": api_key,
                 "Content-Type": "application/json"
             }
             payload = {
-                "q": query,
+                "q": search_query,
                 "num": num_results
             }
+            
+            print(f"🔍 Serper searching: {search_query}")
             
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as response:

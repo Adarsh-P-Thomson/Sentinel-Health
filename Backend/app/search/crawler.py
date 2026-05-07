@@ -97,17 +97,88 @@ class WebCrawler:
         print(f"🔍 Crawling: {url}")
         
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=self.timeout)) as response:
+            # Special handling for Reddit
+            headers = {}
+            if 'reddit.com' in url:
+                # Use old.reddit.com for easier scraping (but don't double-convert)
+                if not url.startswith('https://old.reddit.com'):
+                    url = url.replace('www.reddit.com', 'old.reddit.com').replace('https://reddit.com', 'https://old.reddit.com')
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.5",
+                    "Accept-Encoding": "gzip, deflate, br",
+                    "DNT": "1",
+                    "Connection": "keep-alive",
+                    "Upgrade-Insecure-Requests": "1",
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "none",
+                    "Sec-Fetch-User": "?1"
+                }
+            
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=self.timeout)) as response:
                 if response.status != 200:
                     self.errors.append(f"{url}: HTTP {response.status}")
                     return
                 
                 # Get content
                 html_content = await response.text()
+                
+                # Check for Reddit verification page
+                if 'reddit.com' in url and ('verification' in html_content.lower() or 'please wait' in html_content.lower()):
+                    print(f"⚠️  Reddit verification page detected, skipping: {url}")
+                    self.errors.append(f"{url}: Reddit verification required")
+                    return
+                
                 soup = BeautifulSoup(html_content, 'html.parser')
                 
-                # Extract text content
-                text_content = soup.get_text(separator='\n', strip=True)
+                # Remove unwanted elements (header, footer, nav, ads, scripts, styles)
+                for element in soup.find_all(['script', 'style', 'nav', 'header', 'footer', 'aside', 'iframe']):
+                    element.decompose()
+                
+                # Remove common ad/tracking classes
+                ad_classes = ['ad', 'advertisement', 'banner', 'popup', 'modal', 'cookie', 'gdpr', 'sidebar', 'related-posts']
+                for ad_class in ad_classes:
+                    for element in soup.find_all(class_=lambda x: x and ad_class in x.lower()):
+                        element.decompose()
+                
+                # Try to find main content area
+                main_content = None
+                content_selectors = [
+                    'article',
+                    'main',
+                    '[role="main"]',
+                    '.content',
+                    '.main-content',
+                    '.post-content',
+                    '.entry-content',
+                    '#content',
+                    '#main',
+                    '.thing',  # Reddit specific
+                    '.usertext-body'  # Reddit comments
+                ]
+                
+                for selector in content_selectors:
+                    main_content = soup.select_one(selector)
+                    if main_content:
+                        break
+                
+                # If no main content found, use body
+                if not main_content:
+                    main_content = soup.body if soup.body else soup
+                
+                # Extract clean text content
+                text_content = main_content.get_text(separator='\n', strip=True)
+                
+                # Remove excessive whitespace
+                text_content = '\n'.join(line.strip() for line in text_content.split('\n') if line.strip())
+                
+                # Check if we got meaningful content
+                if len(text_content) < 100:
+                    print(f"⚠️  Too little content extracted from {url}, skipping")
+                    self.errors.append(f"{url}: Insufficient content")
+                    return
                 
                 # Extract title
                 title = soup.title.string if soup.title else url
@@ -115,12 +186,14 @@ class WebCrawler:
                 # Extract meta description
                 description = ""
                 meta_desc = soup.find('meta', attrs={'name': 'description'})
+                if not meta_desc:
+                    meta_desc = soup.find('meta', attrs={'property': 'og:description'})
                 if meta_desc:
                     description = meta_desc.get('content', '')
                 
-                # Extract links
+                # Extract links (only from main content)
                 links = []
-                for link in soup.find_all('a', href=True, limit=50):
+                for link in main_content.find_all('a', href=True, limit=50):
                     href = link['href']
                     if href.startswith('http'):
                         links.append({
@@ -129,9 +202,9 @@ class WebCrawler:
                             "type": "external"
                         })
                 
-                # Extract images
+                # Extract images (only from main content)
                 media = []
-                for img in soup.find_all('img', src=True, limit=20):
+                for img in main_content.find_all('img', src=True, limit=20):
                     media.append({
                         "type": "image",
                         "url": img['src'],
@@ -141,7 +214,7 @@ class WebCrawler:
                 # Store page in MongoDB
                 page_id = await self._store_page({
                     "url": url,
-                    "html_content": html_content,
+                    "html_content": str(main_content),  # Store only main content HTML
                     "text_content": text_content,
                     "title": title,
                     "description": description,
@@ -153,7 +226,7 @@ class WebCrawler:
                 if page_id:
                     self.pages_stored += 1
                     self.mongodb_page_ids.append(page_id)
-                    print(f"✅ Stored: {title[:50]}...")
+                    print(f"✅ Stored: {title[:50]}... ({len(text_content)} chars)")
                 
         except asyncio.TimeoutError:
             self.errors.append(f"{url}: Timeout")

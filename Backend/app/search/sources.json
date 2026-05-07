@@ -1,11 +1,37 @@
 {
   "sources": [
     {
-      "id": "reddit",
+      "id": "reddit_json",
       "name": "Reddit",
       "type": "social_media",
       "enabled": true,
-      "description": "Search Reddit posts and comments",
+      "description": "Reddit JSON API - fetches posts with comments/replies (no auth needed)",
+      "base_url": "https://reddit.com",
+      "api_url": "https://www.reddit.com/search.json",
+      "rate_limit": {
+        "requests_per_minute": 30
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "search",
+          "endpoint": "/search.json",
+          "method": "GET"
+        }
+      ],
+      "data_extraction": {
+        "json_api": true,
+        "includes_replies": true
+      }
+    },
+    {
+      "id": "reddit",
+      "name": "Reddit (OAuth - Disabled)",
+      "type": "social_media",
+      "enabled": false,
+      "description": "Reddit OAuth API (disabled - use reddit_json instead)",
       "base_url": "https://www.reddit.com",
       "api_url": "https://oauth.reddit.com",
       "rate_limit": {
@@ -52,9 +78,9 @@
       "name": "X (Twitter)",
       "type": "social_media",
       "enabled": true,
-      "description": "Search X/Twitter posts",
+      "description": "Search X/Twitter posts using API v2",
       "base_url": "https://twitter.com",
-      "api_url": "https://api.twitterapi.io/v1",
+      "api_url": "https://api.twitter.com/2",
       "rate_limit": {
         "requests_per_minute": 30,
         "requests_per_hour": 300
@@ -62,22 +88,21 @@
       "auth_required": true,
       "auth_type": "bearer",
       "config": {
-        "api_key": "${TWITTER_API_KEY}"
+        "bearer_token": "TWITTER_BEARER_TOKEN"
       },
       "search_endpoints": [
         {
-          "name": "search_tweets",
-          "endpoint": "/search",
+          "name": "search_recent",
+          "endpoint": "/tweets/search/recent",
           "method": "GET",
           "params": {
             "query": "search query",
-            "count": 100,
-            "result_type": "recent|popular|mixed"
+            "max_results": 100
           }
         }
       ],
       "data_extraction": {
-        "post_fields": ["text", "user", "created_at", "retweet_count", "favorite_count", "reply_count", "id_str", "entities"]
+        "api_based": true
       }
     },
     {
@@ -105,6 +130,90 @@
       ],
       "data_extraction": {
         "api_based": true
+      }
+    },
+    {
+      "id": "serper_reddit",
+      "name": "Reddit (via Serper - Disabled)",
+      "type": "social_media",
+      "enabled": false,
+      "description": "Reddit via Serper (disabled - use reddit_json for better data with replies)",
+      "base_url": "https://reddit.com",
+      "api_url": "https://google.serper.dev/search",
+      "rate_limit": {
+        "requests_per_minute": 60
+      },
+      "auth_required": true,
+      "auth_type": "api_key",
+      "config": {
+        "api_key": "SERPER_API_KEY",
+        "search_reddit": true
+      },
+      "search_endpoints": [
+        {
+          "name": "reddit_search",
+          "endpoint": "/search",
+          "method": "POST"
+        }
+      ],
+      "data_extraction": {
+        "api_based": true
+      }
+    },
+    {
+      "id": "serper_twitter",
+      "name": "X/Twitter (via Serper)",
+      "type": "social_media",
+      "enabled": true,
+      "description": "Search X/Twitter posts via Serper.dev (no Twitter API needed)",
+      "base_url": "https://x.com",
+      "api_url": "https://google.serper.dev/search",
+      "rate_limit": {
+        "requests_per_minute": 60
+      },
+      "auth_required": true,
+      "auth_type": "api_key",
+      "config": {
+        "api_key": "SERPER_API_KEY",
+        "search_twitter": true
+      },
+      "search_endpoints": [
+        {
+          "name": "twitter_search",
+          "endpoint": "/search",
+          "method": "POST"
+        }
+      ],
+      "data_extraction": {
+        "api_based": true
+      }
+    },
+    {
+      "id": "zyte",
+      "name": "Zyte Smart Scraper",
+      "type": "search_engine",
+      "enabled": false,
+      "description": "AI-powered web scraping with automatic content extraction (disabled for now)",
+      "base_url": "https://www.zyte.com",
+      "api_url": "https://api.zyte.com/v1/extract",
+      "rate_limit": {
+        "requests_per_minute": 30
+      },
+      "auth_required": true,
+      "auth_type": "api_key",
+      "config": {
+        "api_key": "ZYTE_API_KEY"
+      },
+      "search_endpoints": [
+        {
+          "name": "extract",
+          "endpoint": "/v1/extract",
+          "method": "POST"
+        }
+      ],
+      "data_extraction": {
+        "ai_powered": true,
+        "automatic_extraction": true
       }
     },
     {
@@ -353,9 +462,10 @@
     }
   },
   "metadata": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "last_updated": "2026-05-07",
-    "total_sources": 10,
-    "enabled_sources": 5
+    "total_sources": 16,
+    "enabled_sources": 7,
+    "notes": "reddit_json is the primary Reddit source - includes replies/comments. Other Reddit sources disabled."
   }
 }

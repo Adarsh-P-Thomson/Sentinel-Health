@@ -136,7 +136,7 @@ class BaseSearchEngine(ABC):
         document = {
             "search_execution_id": self.search_execution_id,
             "source_id": self.source_id,
-            "source_type": self.source_config.get("type", "unknown"),
+            "source_type": self._get_source_type(),  # Get proper source type
             "source_post_id": post_data.get("source_post_id"),
             "source_url": post_data.get("source_url"),
             "content": post_data.get("content", ""),
@@ -158,6 +158,10 @@ class BaseSearchEngine(ABC):
             "created_at": datetime.utcnow()
         }
         
+        # Add optional replies field
+        if post_data.get("replies"):
+            document["replies"] = post_data["replies"]
+        
         # Add optional fields
         if raw_page_id:
             document["raw_page_id"] = ObjectId(raw_page_id)
@@ -166,6 +170,20 @@ class BaseSearchEngine(ABC):
         
         result = await self.mongodb.raw_posts.insert_one(document)
         return str(result.inserted_id)
+    
+    def _get_source_type(self) -> str:
+        """Get proper source type for MongoDB validation"""
+        source_id = self.source_id.lower()
+        
+        # Map source IDs to valid MongoDB enum values
+        if 'reddit' in source_id:
+            return 'reddit'
+        elif 'twitter' in source_id or 'x.com' in source_id:
+            return 'twitter'
+        elif 'quora' in source_id:
+            return 'quora'
+        else:
+            return 'forum'  # Default fallback
     
     async def respect_rate_limit(self):
         """Implement rate limiting"""

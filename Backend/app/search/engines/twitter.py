@@ -1,31 +1,30 @@
 """
-Twitter/X search engine implementation using twitterapi.io
+Twitter/X search engine implementation using Twitter API v2
 """
 import aiohttp
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
 from app.search.base import BaseSearchEngine
+from app.search.crawler import WebCrawler
 
 
 class TwitterSearchEngine(BaseSearchEngine):
-    """Twitter/X search implementation"""
+    """Twitter/X search implementation using API v2"""
     
     async def search(
         self,
         query: str,
         keywords: List[str],
-        count: int = 100,
-        result_type: str = "recent"
+        max_results: int = 100
     ) -> Dict[str, Any]:
         """
-        Search Twitter/X for tweets
+        Search Twitter/X for tweets using API v2
         
         Args:
             query: Search query string
             keywords: List of keywords to search for
-            count: Maximum results to fetch
-            result_type: Type of results (recent, popular, mixed)
+            max_results: Maximum results to fetch (10-100)
         """
         results = {
             "pages_found": 0,
@@ -37,21 +36,25 @@ class TwitterSearchEngine(BaseSearchEngine):
         }
         
         try:
-            config = self.source_config.get("config", {})
-            api_key = config.get("api_key", "").replace("${TWITTER_API_KEY}", "")
+            # Get Bearer Token from settings
+            from app.core.config import settings
+            bearer_token = settings.twitter_bearer_token
             
-            if not api_key:
-                raise ValueError("Twitter API key not configured")
+            if not bearer_token:
+                results["errors"].append("Twitter Bearer Token not configured. Add to .env as TWITTER_BEARER_TOKEN")
+                return results
             
-            url = "https://api.twitterapi.io/v1/search"
+            # Twitter API v2 recent search endpoint
+            url = "https://api.twitter.com/2/tweets/search/recent"
             headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
+                "Authorization": f"Bearer {bearer_token}"
             }
             params = {
                 "query": query,
-                "count": count,
-                "result_type": result_type
+                "max_results": min(max_results, 100),
+                "tweet.fields": "created_at,public_metrics,author_id,lang",
+                "expansions": "author_id",
+                "user.fields": "username"
             }
             
             async with aiohttp.ClientSession() as session:
@@ -59,42 +62,50 @@ class TwitterSearchEngine(BaseSearchEngine):
                     if response.status == 200:
                         data = await response.json()
                         
-                        # Store the search results page
-                        page_data = {
-                            "url": str(response.url),
-                            "title": f"Twitter Search: {query}",
-                            "text_content": query,
-                            "http_status": 200
-                        }
-                        page_id = await self.store_raw_page(page_data)
+                        # Extract tweets and store them
+                        tweets = data.get("data", [])
+                        users = {user["id"]: user for user in data.get("includes", {}).get("users", [])}
+                        
+                        print(f"📋 Twitter found {len(tweets)} tweets")
+                        
+                        for tweet in tweets:
+                            author_id = tweet.get("author_id")
+                            author = users.get(author_id, {})
+                            metrics = tweet.get("public_metrics", {})
+                            
+                            post_data = {
+                                "source_post_id": f"twitter_{tweet['id']}",
+                                "source_url": f"https://twitter.com/user/status/{tweet['id']}",
+                                "content": tweet.get("text", ""),
+                                "author_username": author.get("username", "unknown"),
+                                "author_id": author_id,
+                                "likes": metrics.get("like_count", 0),
+                                "shares": metrics.get("retweet_count", 0),
+                                "comments": metrics.get("reply_count", 0),
+                                "views": metrics.get("impression_count", 0),
+                                "posted_at": datetime.fromisoformat(tweet.get("created_at", "").replace("Z", "+00:00")) if tweet.get("created_at") else datetime.utcnow(),
+                                "language": tweet.get("lang", "en"),
+                                "hashtags": [],
+                                "mentions": []
+                            }
+                            
+                            post_id = await self.store_raw_post(post_data, None)
+                            results["posts_extracted"] += 1
+                            results["mongodb_post_ids"].append(post_id)
+                        
                         results["pages_found"] = 1
                         results["pages_stored"] = 1
-                        results["mongodb_page_ids"].append(page_id)
                         
-                        # Extract tweets
-                        tweets = await self.extract_tweets_from_response(data, page_id)
-                        results["posts_extracted"] = len(tweets)
-                        results["mongodb_post_ids"].extend(tweets)
-                        
-                        # Update page with post count
-                        await self.mongodb.raw_pages.update_one(
-                            {"_id": page_id},
-                            {
-                                "$set": {
-                                    "processing_status": "completed",
-                                    "posts_extracted_count": len(tweets),
-                                    "processed_at": datetime.utcnow()
-                                }
-                            }
-                        )
+                    elif response.status == 429:
+                        results["errors"].append("Twitter API rate limit exceeded. Wait before trying again.")
                     else:
-                        error = f"Twitter API error: {response.status}"
-                        results["errors"].append(error)
+                        error_text = await response.text()
+                        results["errors"].append(f"Twitter API error {response.status}: {error_text}")
             
             await self.respect_rate_limit()
             
         except Exception as e:
-            results["errors"].append(str(e))
+            results["errors"].append(f"Search error: {str(e)}")
         
         return results
     
@@ -104,67 +115,4 @@ class TwitterSearchEngine(BaseSearchEngine):
     
     async def extract_posts(self, page_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Extract tweets from API response"""
-        posts = []
-        tweets = page_data.get("data", [])
-        
-        for tweet in tweets:
-            posts.append(self._format_tweet(tweet))
-        
-        return posts
-    
-    async def extract_tweets_from_response(
-        self,
-        response_data: Dict[str, Any],
-        page_id: str
-    ) -> List[str]:
-        """Extract and store tweets from API response"""
-        post_ids = []
-        tweets = response_data.get("data", [])
-        
-        for tweet in tweets:
-            formatted_tweet = {
-                "source_post_id": f"twitter_{tweet.get('id_str', tweet.get('id'))}",
-                "source_url": f"https://twitter.com/user/status/{tweet.get('id_str', tweet.get('id'))}",
-                "content": tweet.get('text', ''),
-                "author_username": tweet.get('user', {}).get('screen_name'),
-                "author_id": tweet.get('user', {}).get('id_str'),
-                "likes": tweet.get('favorite_count', 0),
-                "shares": tweet.get('retweet_count', 0),
-                "comments": tweet.get('reply_count', 0),
-                "views": 0,  # Twitter API v1 doesn't provide view count
-                "posted_at": self._parse_twitter_date(tweet.get('created_at')),
-                "hashtags": [tag['text'] for tag in tweet.get('entities', {}).get('hashtags', [])],
-                "mentions": [mention['screen_name'] for mention in tweet.get('entities', {}).get('user_mentions', [])]
-            }
-            
-            post_id = await self.store_raw_post(formatted_tweet, page_id)
-            post_ids.append(post_id)
-        
-        return post_ids
-    
-    def _format_tweet(self, tweet: Dict[str, Any]) -> Dict[str, Any]:
-        """Format tweet data"""
-        return {
-            "source_post_id": f"twitter_{tweet.get('id_str', tweet.get('id'))}",
-            "source_url": f"https://twitter.com/user/status/{tweet.get('id_str', tweet.get('id'))}",
-            "content": tweet.get('text', ''),
-            "author_username": tweet.get('user', {}).get('screen_name'),
-            "author_id": tweet.get('user', {}).get('id_str'),
-            "likes": tweet.get('favorite_count', 0),
-            "shares": tweet.get('retweet_count', 0),
-            "comments": tweet.get('reply_count', 0),
-            "views": 0,
-            "posted_at": self._parse_twitter_date(tweet.get('created_at')),
-            "language": tweet.get('lang', 'en'),
-            "hashtags": [tag['text'] for tag in tweet.get('entities', {}).get('hashtags', [])],
-            "mentions": [mention['screen_name'] for mention in tweet.get('entities', {}).get('user_mentions', [])]
-        }
-    
-    def _parse_twitter_date(self, date_str: str) -> datetime:
-        """Parse Twitter date format"""
-        if not date_str:
-            return datetime.utcnow()
-        try:
-            return datetime.strptime(date_str, '%a %b %d %H:%M:%S %z %Y')
-        except:
-            return datetime.utcnow()
+        return []

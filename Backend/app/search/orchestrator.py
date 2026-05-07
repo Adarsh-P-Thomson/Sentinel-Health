@@ -16,6 +16,8 @@ from app.search.engines.simple_web import SimpleWebSearchEngine
 from app.search.engines.duckduckgo import DuckDuckGoSearchEngine
 from app.search.engines.bing import BingSearchEngine
 from app.search.engines.serper import SerperSearchEngine
+from app.search.engines.zyte import ZyteSearchEngine
+from app.search.engines.reddit_json import RedditJSONSearchEngine
 
 
 class SearchOrchestrator:
@@ -29,11 +31,15 @@ class SearchOrchestrator:
         # Map source types to engine classes
         self.engine_map = {
             "reddit": RedditSearchEngine,
+            "reddit_json": RedditJSONSearchEngine,
             "twitter": TwitterSearchEngine,
-            "google": SimpleWebSearchEngine,  # Use simple scraper instead of API
+            "google": SimpleWebSearchEngine,
             "duckduckgo": DuckDuckGoSearchEngine,
             "bing": BingSearchEngine,
-            "serper": SerperSearchEngine,  # Serper.dev API - actually works!
+            "serper": SerperSearchEngine,
+            "serper_reddit": SerperSearchEngine,
+            "serper_twitter": SerperSearchEngine,
+            "zyte": ZyteSearchEngine,
             "simple_web": SimpleWebSearchEngine
         }
     
