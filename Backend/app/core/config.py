@@ -57,6 +57,7 @@ class Settings(BaseSettings):
         )
     
     # MongoDB
+    mongodb_url: Optional[str] = Field(default=None, alias="MONGODB_URL")
     mongodb_host: str = Field(default="localhost", alias="MONGODB_HOST")
     mongodb_port: int = Field(default=27017, alias="MONGODB_PORT")
     mongodb_db: str = Field(default="sentinel_health", alias="MONGODB_DB")
@@ -64,14 +65,24 @@ class Settings(BaseSettings):
     mongodb_password: Optional[str] = Field(default=None, alias="MONGODB_PASSWORD")
     mongodb_max_pool_size: int = Field(default=10, alias="MONGODB_MAX_POOL_SIZE")
     
-    @property
-    def mongodb_url(self) -> str:
-        """Construct MongoDB connection URL"""
-        if self.mongodb_user and self.mongodb_password:
+    def get_mongodb_url(self) -> str:
+        """
+        Construct MongoDB connection URL
+        Priority: MONGODB_URL env var > constructed from components
+        """
+        # If direct URL is provided, use it
+        if self.mongodb_url:
+            return self.mongodb_url
+        
+        # Otherwise construct from components
+        # Only include auth if both username and password are provided and non-empty
+        if self.mongodb_user and self.mongodb_password and self.mongodb_user.strip() and self.mongodb_password.strip():
             return (
                 f"mongodb://{self.mongodb_user}:{self.mongodb_password}"
                 f"@{self.mongodb_host}:{self.mongodb_port}/{self.mongodb_db}"
             )
+        
+        # No authentication
         return f"mongodb://{self.mongodb_host}:{self.mongodb_port}/{self.mongodb_db}"
     
     # Redis

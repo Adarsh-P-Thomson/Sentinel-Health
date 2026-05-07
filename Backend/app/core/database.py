@@ -71,10 +71,15 @@ class MongoDB:
     @classmethod
     async def connect(cls):
         """Connect to MongoDB"""
+        mongodb_url = settings.get_mongodb_url()
+        print(f"🔗 Connecting to MongoDB: {mongodb_url.replace(settings.mongodb_password or '', '***') if settings.mongodb_password else mongodb_url}")
+        
         cls.client = AsyncIOMotorClient(
-            settings.mongodb_url,
+            mongodb_url,
             maxPoolSize=settings.mongodb_max_pool_size,
+            serverSelectionTimeoutMS=5000,  # 5 second timeout
         )
+        
         # Verify connection
         await cls.client.admin.command('ping')
         print(f"✓ Connected to MongoDB: {settings.mongodb_db}")
