@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.database import MongoDB
 from app.api.health import router as health_router
-from app.api.analyze import router as analyze_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -64,10 +64,6 @@ app.add_middleware(
 # Include routers
 app.include_router(
     health_router,
-    prefix=settings.api_prefix,
-)
-app.include_router(
-    analyze_router,
     prefix=settings.api_prefix,
 )
 

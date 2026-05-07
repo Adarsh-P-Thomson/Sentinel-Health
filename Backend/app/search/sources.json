@@ -1,0 +1,361 @@
+{
+  "sources": [
+    {
+      "id": "reddit",
+      "name": "Reddit",
+      "type": "social_media",
+      "enabled": true,
+      "description": "Search Reddit posts and comments",
+      "base_url": "https://www.reddit.com",
+      "api_url": "https://oauth.reddit.com",
+      "rate_limit": {
+        "requests_per_minute": 60,
+        "requests_per_hour": 600
+      },
+      "auth_required": true,
+      "auth_type": "oauth2",
+      "config": {
+        "client_id": "${REDDIT_CLIENT_ID}",
+        "client_secret": "${REDDIT_CLIENT_SECRET}",
+        "user_agent": "${REDDIT_USER_AGENT}"
+      },
+      "search_endpoints": [
+        {
+          "name": "subreddit_search",
+          "endpoint": "/r/{subreddit}/search",
+          "method": "GET",
+          "params": {
+            "q": "query",
+            "sort": "relevance|new|hot|top",
+            "t": "all|year|month|week|day|hour",
+            "limit": 100
+          }
+        },
+        {
+          "name": "global_search",
+          "endpoint": "/search",
+          "method": "GET",
+          "params": {
+            "q": "query",
+            "sort": "relevance|new",
+            "limit": 100
+          }
+        }
+      ],
+      "data_extraction": {
+        "post_fields": ["title", "selftext", "author", "created_utc", "score", "num_comments", "url", "permalink"],
+        "comment_fields": ["body", "author", "created_utc", "score", "permalink"]
+      }
+    },
+    {
+      "id": "twitter",
+      "name": "X (Twitter)",
+      "type": "social_media",
+      "enabled": true,
+      "description": "Search X/Twitter posts",
+      "base_url": "https://twitter.com",
+      "api_url": "https://api.twitterapi.io/v1",
+      "rate_limit": {
+        "requests_per_minute": 30,
+        "requests_per_hour": 300
+      },
+      "auth_required": true,
+      "auth_type": "bearer",
+      "config": {
+        "api_key": "${TWITTER_API_KEY}"
+      },
+      "search_endpoints": [
+        {
+          "name": "search_tweets",
+          "endpoint": "/search",
+          "method": "GET",
+          "params": {
+            "query": "search query",
+            "count": 100,
+            "result_type": "recent|popular|mixed"
+          }
+        }
+      ],
+      "data_extraction": {
+        "post_fields": ["text", "user", "created_at", "retweet_count", "favorite_count", "reply_count", "id_str", "entities"]
+      }
+    },
+    {
+      "id": "serper",
+      "name": "Serper (Google API)",
+      "type": "search_engine",
+      "enabled": true,
+      "description": "Google search via Serper.dev API (2,500 free searches/month)",
+      "base_url": "https://serper.dev",
+      "api_url": "https://google.serper.dev/search",
+      "rate_limit": {
+        "requests_per_minute": 60
+      },
+      "auth_required": true,
+      "auth_type": "api_key",
+      "config": {
+        "api_key": "${SERPER_API_KEY}"
+      },
+      "search_endpoints": [
+        {
+          "name": "search",
+          "endpoint": "/search",
+          "method": "POST"
+        }
+      ],
+      "data_extraction": {
+        "api_based": true
+      }
+    },
+    {
+      "id": "google",
+      "name": "Google Search",
+      "type": "search_engine",
+      "enabled": true,
+      "description": "Google web search for forums and articles",
+      "base_url": "https://www.google.com",
+      "api_url": "https://www.googleapis.com/customsearch/v1",
+      "rate_limit": {
+        "requests_per_minute": 10,
+        "requests_per_day": 100
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "web_scrape",
+          "endpoint": "/search",
+          "method": "GET",
+          "params": {
+            "q": "query",
+            "num": 10
+          }
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true
+      }
+    },
+    {
+      "id": "duckduckgo",
+      "name": "DuckDuckGo",
+      "type": "search_engine",
+      "enabled": true,
+      "description": "Privacy-focused search engine",
+      "base_url": "https://duckduckgo.com",
+      "api_url": "https://html.duckduckgo.com/html",
+      "rate_limit": {
+        "requests_per_minute": 10
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "html_search",
+          "endpoint": "",
+          "method": "GET",
+          "params": {
+            "q": "query"
+          }
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true
+      }
+    },
+    {
+      "id": "bing",
+      "name": "Bing Search",
+      "type": "search_engine",
+      "enabled": true,
+      "description": "Microsoft Bing search engine",
+      "base_url": "https://www.bing.com",
+      "api_url": "https://www.bing.com/search",
+      "rate_limit": {
+        "requests_per_minute": 10
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "web_search",
+          "endpoint": "",
+          "method": "GET",
+          "params": {
+            "q": "query",
+            "count": 20
+          }
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true
+      }
+    },
+    {
+      "id": "quora",
+      "name": "Quora",
+      "type": "qa_forum",
+      "enabled": false,
+      "description": "Search Quora questions and answers",
+      "base_url": "https://www.quora.com",
+      "api_url": null,
+      "rate_limit": {
+        "requests_per_minute": 10
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "web_scrape",
+          "endpoint": "/search?q={query}",
+          "method": "GET",
+          "params": {}
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true,
+        "selectors": {
+          "question": ".q-box",
+          "answer": ".Answer"
+        }
+      }
+    },
+    {
+      "id": "healthboards",
+      "name": "HealthBoards",
+      "type": "health_forum",
+      "enabled": false,
+      "description": "Health-focused discussion forum",
+      "base_url": "https://www.healthboards.com",
+      "api_url": null,
+      "rate_limit": {
+        "requests_per_minute": 5
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "forum_search",
+          "endpoint": "/search.php",
+          "method": "GET",
+          "params": {
+            "query": "search term"
+          }
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true
+      }
+    },
+    {
+      "id": "medhelp",
+      "name": "MedHelp",
+      "type": "health_forum",
+      "enabled": false,
+      "description": "Medical Q&A community",
+      "base_url": "https://www.medhelp.org",
+      "api_url": null,
+      "rate_limit": {
+        "requests_per_minute": 5
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "community_search",
+          "endpoint": "/search",
+          "method": "GET",
+          "params": {
+            "q": "query"
+          }
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true
+      }
+    },
+    {
+      "id": "drugs_com",
+      "name": "Drugs.com",
+      "type": "drug_info",
+      "enabled": false,
+      "description": "Drug information and reviews",
+      "base_url": "https://www.drugs.com",
+      "api_url": null,
+      "rate_limit": {
+        "requests_per_minute": 10
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "search",
+          "endpoint": "/search.php",
+          "method": "GET",
+          "params": {
+            "searchterm": "drug name"
+          }
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true,
+        "focus": "user_reviews"
+      }
+    },
+    {
+      "id": "webmd",
+      "name": "WebMD Community",
+      "type": "health_forum",
+      "enabled": false,
+      "description": "WebMD community forums",
+      "base_url": "https://www.webmd.com",
+      "api_url": null,
+      "rate_limit": {
+        "requests_per_minute": 10
+      },
+      "auth_required": false,
+      "auth_type": "none",
+      "config": {},
+      "search_endpoints": [
+        {
+          "name": "forum_search",
+          "endpoint": "/search/search_results/default.aspx",
+          "method": "GET",
+          "params": {
+            "query": "search term"
+          }
+        }
+      ],
+      "data_extraction": {
+        "scraping_required": true
+      }
+    }
+  ],
+  "search_strategies": {
+    "keyword_combination": {
+      "description": "Combine drug names with symptom keywords",
+      "example": "Drug-Y AND (headache OR nausea OR 'side effect')"
+    },
+    "temporal_filtering": {
+      "description": "Filter by time period",
+      "options": ["last_hour", "last_24h", "last_week", "last_month", "last_year"]
+    },
+    "relevance_boosting": {
+      "description": "Boost posts with medical terminology",
+      "keywords": ["adverse event", "side effect", "reaction", "symptom", "doctor", "hospital", "medication"]
+    }
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "last_updated": "2026-05-07",
+    "total_sources": 10,
+    "enabled_sources": 5
+  }
+}

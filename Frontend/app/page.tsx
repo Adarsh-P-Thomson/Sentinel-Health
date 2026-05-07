@@ -76,6 +76,12 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-6"
           >
+            <a href="/" className="text-neutral-600 hover:text-primary-600 transition-colors">
+              Home
+            </a>
+            <a href="/search" className="text-neutral-600 hover:text-primary-600 transition-colors">
+              Search
+            </a>
             <a href="#features" className="text-neutral-600 hover:text-primary-600 transition-colors">
               Features
             </a>
