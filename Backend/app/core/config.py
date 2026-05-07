@@ -108,6 +108,7 @@ class Settings(BaseSettings):
     
     # AI/LLM
     openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
+    groq_api_key: Optional[str] = Field(default=None, alias="GROQ_API_KEY")
     langsmith_api_key: Optional[str] = Field(default=None, alias="LANGSMITH_API_KEY")
     langsmith_project: str = Field(
         default="sentinel-health",
