@@ -9,6 +9,8 @@ from app.core.config import settings
 from app.core.database import MongoDB
 from app.api.health import router as health_router
 from app.api.search import router as search_router
+from app.api.process import router as process_router
+from app.api.analyze import router as analyze_router
 
 
 @asynccontextmanager
@@ -69,6 +71,14 @@ app.include_router(
 )
 app.include_router(
     search_router,
+    prefix=settings.api_prefix,
+)
+app.include_router(
+    process_router,
+    prefix=settings.api_prefix,
+)
+app.include_router(
+    analyze_router,
     prefix=settings.api_prefix,
 )
 

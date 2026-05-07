@@ -120,6 +120,14 @@ class Settings(BaseSettings):
     # AI/LLM
     openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
     groq_api_key: Optional[str] = Field(default=None, alias="GROQ_API_KEY")
+    
+    # Azure OpenAI
+    azure_openai_api_key: Optional[str] = Field(default=None, alias="AZURE_OPENAI_API_KEY")
+    azure_openai_endpoint: Optional[str] = Field(default=None, alias="AZURE_OPENAI_ENDPOINT")
+    azure_openai_deployment_name: str = Field(default="gpt-4", alias="AZURE_OPENAI_DEPLOYMENT_NAME")
+    azure_openai_api_version: str = Field(default="2024-02-15-preview", alias="AZURE_OPENAI_API_VERSION")
+    
+    # LangSmith
     langsmith_api_key: Optional[str] = Field(default=None, alias="LANGSMITH_API_KEY")
     langsmith_project: str = Field(
         default="sentinel-health",

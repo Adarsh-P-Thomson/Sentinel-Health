@@ -82,6 +82,9 @@ export default function Home() {
             <a href="/search" className="text-neutral-600 hover:text-primary-600 transition-colors">
               Search
             </a>
+            <a href="/suggestions" className="text-neutral-600 hover:text-primary-600 transition-colors">
+              Suggestions
+            </a>
             <a href="#features" className="text-neutral-600 hover:text-primary-600 transition-colors">
               Features
             </a>

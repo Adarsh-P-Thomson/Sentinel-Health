@@ -48,7 +48,7 @@ export default function SearchPage() {
 
   const fetchSources = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/sources`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sources`);
       const data = await response.json();
       setSources(data.sources.filter((s: Source) => s.enabled));
     } catch (err) {
@@ -86,7 +86,7 @@ export default function SearchPage() {
     setSearchResult(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/search`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -113,6 +113,23 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
+      {/* Navigation */}
+      <nav className="bg-white border-b border-neutral-200">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <a href="/" className="text-neutral-600 hover:text-primary-600 transition-colors">
+              Home
+            </a>
+            <a href="/search" className="text-primary-600 font-medium">
+              Search
+            </a>
+            <a href="/suggestions" className="text-neutral-600 hover:text-primary-600 transition-colors">
+              Suggestions
+            </a>
+          </div>
+        </div>
+      </nav>
+
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-6 py-6">

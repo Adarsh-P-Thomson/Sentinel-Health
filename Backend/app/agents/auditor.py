@@ -4,9 +4,8 @@ The final gatekeeper that loops back to the Medical MCP to verify symptoms again
 """
 from app.graph.state import AgentState
 from app.schemas.agent import AuditResult
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from app.core.config import settings
+from app.core.llm import get_structured_llm
 
 async def audit_safety_node(state: AgentState) -> dict:
     """
@@ -15,31 +14,70 @@ async def audit_safety_node(state: AgentState) -> dict:
     extraction = state.get("extraction")
     keyword = state.get("keyword", "")
     
-    print("--- [Safety Auditor] Verifying symptoms against known side effects via Groq ---")
+    print("--- [Safety Auditor] Verifying symptoms against known side effects via Azure OpenAI ---")
     
-    if not settings.groq_api_key or not extraction:
-        print("⚠️ GROQ_API_KEY not found or no extraction. Returning mock data.")
+    if not extraction or not extraction.entities:
+        print("⚠️ No extraction data. Skipping audit.")
         return {"audit": AuditResult(
-            is_unknown_risk=False,
-            criticality="Low",
-            reasoning="[MOCK] System check bypassed due to missing API key."
+            is_adverse_event=False,
+            severity="low",
+            known_side_effect=False,
+            requires_investigation=False,
+            confidence=0.0,
+            risk_category="no_risk",
+            reasoning="No entities extracted to audit."
         )}
         
     try:
-        symptoms = ", ".join([e.value for e in extraction.entities if e.entity_type == "Symptom"])
+        # Extract symptoms from entities
+        symptoms = ", ".join([
+            e.value for e in extraction.entities 
+            if e.entity_type.lower() == "symptom"
+        ])
+        
         if not symptoms:
-            return {"audit": AuditResult(is_unknown_risk=False, criticality="Low", reasoning="No symptoms extracted.")}
+            return {"audit": AuditResult(
+                is_adverse_event=False,
+                severity="low",
+                known_side_effect=False,
+                requires_investigation=False,
+                confidence=1.0,
+                risk_category="no_risk",
+                reasoning="No symptoms reported."
+            )}
             
-        llm = ChatGroq(temperature=0, model_name="llama3-70b-8192", api_key=settings.groq_api_key)
-        structured_llm = llm.with_structured_output(AuditResult)
+        structured_llm = get_structured_llm(
+            schema=AuditResult,
+            temperature=0.0
+        )
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a medical safety auditor. Your job is to evaluate the reported symptoms: '{symptoms}' for the drug '{keyword}'. Determine if these are common/known side effects or if they represent an unknown/critical risk. Provide a clear reasoning and assign a criticality level (Low, Medium, High, Critical)."),
+            ("system", """You are a medical safety auditor specializing in pharmacovigilance.
+
+Evaluate the reported symptoms: '{symptoms}' for the drug '{keyword}'.
+
+Determine:
+- **is_adverse_event**: Is this an adverse drug event? (true/false)
+- **severity**: low, medium, high, or critical
+- **known_side_effect**: Are these known/documented side effects? (true/false)
+- **requires_investigation**: Does this require immediate investigation? (true/false)
+- **confidence**: Your confidence in this assessment (0.0-1.0)
+- **risk_category**: no_risk, low_risk, moderate_risk, high_risk, or critical_risk
+- **reasoning**: Clear explanation of your decision
+
+Consider:
+- Severity of symptoms
+- Whether symptoms are commonly associated with this drug
+- Potential for serious harm
+- Need for regulatory reporting
+"""),
             ("human", "Please audit the safety risk based on the provided symptoms and drug.")
         ])
         
         chain = prompt | structured_llm
         result = await chain.ainvoke({"keyword": keyword, "symptoms": symptoms})
+        
+        print(f"  ✅ Audit: {result.risk_category} (severity: {result.severity})")
         return {"audit": result}
         
     except Exception as e:

@@ -3,10 +3,9 @@ Module C: The Medical Entity Extractor Agent
 Specialist in identifying drugs, dosages, and symptoms from messy, slang-heavy social text.
 """
 from app.graph.state import AgentState
-from app.schemas.agent import MedicalExtractionResult, ExtractedEntity
-from langchain_groq import ChatGroq
+from app.schemas.agent import MedicalExtractionResult, ExtractedEntities
 from langchain_core.prompts import ChatPromptTemplate
-from app.core.config import settings
+from app.core.llm import get_structured_llm
 
 async def extract_entities_node(state: AgentState) -> dict:
     """
@@ -15,34 +14,48 @@ async def extract_entities_node(state: AgentState) -> dict:
     text_to_analyze = state.get("anonymized_text", "")
     keyword = state.get("keyword", "")
     
-    print("--- [Medical Entity Extractor] Identifying drugs and symptoms via Groq ---")
-    
-    if not settings.groq_api_key:
-        print("⚠️ GROQ_API_KEY not found. Returning mock data.")
-        mock_result = MedicalExtractionResult(
-            entities=[ExtractedEntity(entity_type="Drug", value=keyword, confidence=0.95)],
-            summary="[MOCK] User reported an issue."
-        )
-        return {"extraction": mock_result}
+    print("--- [Medical Entity Extractor] Identifying drugs and symptoms via Azure OpenAI ---")
     
     try:
-        llm = ChatGroq(
-            temperature=0,
-            model_name="llama3-70b-8192",
-            api_key=settings.groq_api_key
+        # Get Azure OpenAI LLM with structured output
+        structured_llm = get_structured_llm(
+            schema=MedicalExtractionResult,
+            temperature=0.0
         )
-        structured_llm = llm.with_structured_output(MedicalExtractionResult)
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an expert medical data extractor. Extract any mentioned drugs, dosages, and medical symptoms from the provided text. Ensure high accuracy. The target keyword for this monitoring session is '{keyword}'."),
+            ("system", """You are an expert medical data extractor specializing in social media posts.
+            
+Extract the following from the text:
+- **Drugs**: Include name, generic_name, brand_name, dosage, frequency, duration, route, confidence, context
+- **Symptoms**: Include name, severity (mild/moderate/severe/critical), onset, duration, confidence, context
+- **Conditions**: Include name, icd_code (if known), confidence, context
+- **Procedures**: Include name, confidence
+
+The target keyword for this monitoring session is '{keyword}'.
+Be thorough but accurate. If information is not mentioned, leave fields empty.
+"""),
             ("human", "Text to analyze:\n\n{text}")
         ])
         
         chain = prompt | structured_llm
         result = await chain.ainvoke({"keyword": keyword, "text": text_to_analyze})
         
+        print(f"  ✅ Extracted: {len(result.entities.drugs) + len(result.entities.symptoms)} entities")
         return {"extraction": result}
         
     except Exception as e:
         print(f"❌ Extractor Error: {e}")
-        return {"extraction": None}
+        # Return proper empty result with correct structure
+        return {
+            "extraction": MedicalExtractionResult(
+                entities=ExtractedEntities(
+                    drugs=[],
+                    symptoms=[],
+                    conditions=[],
+                    procedures=[]
+                ),
+                entity_extraction_confidence=0.0,
+                summary="Extraction failed due to error"
+            )
+        }

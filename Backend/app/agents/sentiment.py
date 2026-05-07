@@ -4,9 +4,8 @@ Evaluates emotional tone—distinguishing between patient frustration with a sid
 """
 from app.graph.state import AgentState
 from app.schemas.agent import SentimentResult
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from app.core.config import settings
+from app.core.llm import get_structured_llm
 
 async def analyze_sentiment_node(state: AgentState) -> dict:
     """
@@ -15,28 +14,39 @@ async def analyze_sentiment_node(state: AgentState) -> dict:
     text_to_analyze = state.get("anonymized_text", "")
     keyword = state.get("keyword", "")
     
-    print("--- [Sentiment Analyst] Evaluating emotional tone via Groq ---")
+    print("--- [Sentiment Analyst] Evaluating emotional tone via Azure OpenAI ---")
     
-    if not settings.groq_api_key:
-        print("⚠️ GROQ_API_KEY not found. Returning mock data.")
-        return {"sentiment": SentimentResult(
-            emotional_tone="[MOCK] Frustrated",
-            is_dissatisfaction=True,
-            is_side_effect_complaint=False,
-            confidence_score=0.9
-        )}
-        
     try:
-        llm = ChatGroq(temperature=0, model_name="llama3-70b-8192", api_key=settings.groq_api_key)
-        structured_llm = llm.with_structured_output(SentimentResult)
+        structured_llm = get_structured_llm(
+            schema=SentimentResult,
+            temperature=0.0
+        )
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an expert sentiment analyst specializing in healthcare. Evaluate the emotional tone of the patient's post regarding '{keyword}'. Differentiate between general frustration (e.g., price, pharmacy queues) and actual side-effect complaints."),
+            ("system", """You are an expert sentiment analyst specializing in healthcare social media.
+
+Analyze the emotional tone of the patient's post regarding '{keyword}'.
+
+Provide:
+- **overall**: very_negative, negative, neutral, positive, or very_positive
+- **score**: -1.0 (very negative) to 1.0 (very positive)
+- **emotions**: List of detected emotions (e.g., fear, anger, frustration, hope, relief)
+- **emotion_scores**: Dictionary with scores for each emotion
+- **confidence**: Your confidence in this analysis (0.0-1.0)
+- **context**: Brief explanation of the sentiment context
+- **is_patient_experience**: Whether this is a first-hand patient experience (true/false)
+
+Differentiate between:
+- General frustration (e.g., price, pharmacy queues, insurance)
+- Actual side-effect complaints (physical symptoms, adverse reactions)
+"""),
             ("human", "Text to analyze:\n\n{text}")
         ])
         
         chain = prompt | structured_llm
         result = await chain.ainvoke({"keyword": keyword, "text": text_to_analyze})
+        
+        print(f"  ✅ Sentiment: {result.overall} (score: {result.score:.2f})")
         return {"sentiment": result}
         
     except Exception as e:

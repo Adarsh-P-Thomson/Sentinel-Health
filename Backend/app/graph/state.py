@@ -3,7 +3,13 @@ LangGraph state definition.
 This defines the 'memory' object passed between nodes (agents) during the workflow execution.
 """
 from typing import TypedDict, Annotated, List, Optional
-from app.schemas.agent import MedicalExtractionResult, SentimentResult, TrendResult, AuditResult
+from app.schemas.agent import (
+    MedicalExtractionResult, 
+    SentimentResult, 
+    TrendResult, 
+    AuditResult,
+    AnonymizerResult
+)
 import operator
 
 def merge_list(a: list, b: list) -> list:
@@ -19,6 +25,7 @@ class AgentState(TypedDict):
     raw_text: str                 # The original text fetched by the MCP Scout
     
     anonymized_text: Optional[str] # Text after PII/PHI scrubbing
+    anonymizer_result: Optional[AnonymizerResult] # Anonymizer output details
     
     extraction: Optional[MedicalExtractionResult] # Entities identified by Extractor
     sentiment: Optional[SentimentResult]          # Tone evaluated by Sentiment Analyst

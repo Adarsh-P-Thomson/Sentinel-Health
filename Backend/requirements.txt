@@ -49,9 +49,10 @@ mypy==1.8.0
 asyncpg
 
 # AI & Multi-Agent Framework
-langchain
-langchain-core
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-openai>=0.0.5
 langchain-groq
-langgraph
+langgraph>=0.0.20
 presidio-analyzer
 presidio-anonymizer
