@@ -34,12 +34,12 @@ class SerperSearchEngine(BaseSearchEngine):
         }
         
         try:
-            # Get API key from config
-            config = self.source_config.get("config", {})
-            api_key = config.get("api_key", "").replace("${SERPER_API_KEY}", "")
+            # Get API key from settings
+            from app.core.config import settings
+            api_key = settings.serper_api_key
             
             if not api_key:
-                results["errors"].append("Serper API key not configured. Get free key at https://serper.dev")
+                results["errors"].append("Serper API key not configured. Get free key at https://serper.dev and add to .env as SERPER_API_KEY")
                 return results
             
             url = "https://google.serper.dev/search"

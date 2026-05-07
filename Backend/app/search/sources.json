@@ -94,7 +94,7 @@
       "auth_required": true,
       "auth_type": "api_key",
       "config": {
-        "api_key": "${SERPER_API_KEY}"
+        "api_key": "SERPER_API_KEY"
       },
       "search_endpoints": [
         {

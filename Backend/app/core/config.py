@@ -125,6 +125,15 @@ class Settings(BaseSettings):
         default="sentinel-health",
         alias="LANGSMITH_PROJECT"
     )
+    
+    # Search Engine APIs
+    serper_api_key: Optional[str] = Field(default=None, alias="SERPER_API_KEY")
+    reddit_client_id: Optional[str] = Field(default=None, alias="REDDIT_CLIENT_ID")
+    reddit_client_secret: Optional[str] = Field(default=None, alias="REDDIT_CLIENT_SECRET")
+    reddit_user_agent: str = Field(default="SentinelHealth/1.0", alias="REDDIT_USER_AGENT")
+    twitter_api_key: Optional[str] = Field(default=None, alias="TWITTER_API_KEY")
+    google_api_key: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
+    google_search_engine_id: Optional[str] = Field(default=None, alias="GOOGLE_SEARCH_ENGINE_ID")
 
 
 # Global settings instance
